@@ -1,0 +1,1 @@
+CT0:AUTH_TOKEN я брал тут https://hstock.org/ru/product/twitter-auth-token-pochta-365c1c91

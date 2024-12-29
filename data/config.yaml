@@ -1,0 +1,19 @@
+﻿delay_before_login_twitter: # задержка перед авторизацией в твиттер (в секундах)
+  min: 10   
+  max: 30  
+  
+delay_before_login: # задержка перед выполнением регистрации (в секундах)
+  min: 20    
+  max: 40
+  
+delay_before_daily: # задержка перед выполнением daily check in (в секундах)
+  min: 20
+  max: 40
+  
+delay_before_repost: # задержка перед выполнением квеста на репост (в секундах)
+  min: 20
+  max: 40
+  
+delay_between_accs: # задержка между аккаунтами (в минутах)
+  min: 1
+  max: 5  
