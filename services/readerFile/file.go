@@ -97,3 +97,37 @@ func createTwitterData(line string, i int8) (*models.TwitterData, error) {
 
 	return twitterData, nil
 }
+
+func AddCodeIfNotExists(code string) (string, error) {
+	filePath := "../data/register_codes.txt"
+
+	content, err := os.ReadFile(filePath)
+	if err != nil && !os.IsNotExist(err) {
+		return "", fmt.Errorf("error reading file: %w", err)
+	}
+
+	lines := strings.Split(string(content), "\n")
+	for _, line := range lines {
+		if strings.TrimSpace(line) == code {
+			return "Код уже имеется в файле", nil
+		}
+	}
+
+	f, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return "", fmt.Errorf("error opening file: %w", err)
+	}
+	defer f.Close()
+
+	if len(content) > 0 && !strings.HasSuffix(string(content), "\n") {
+		if _, err := f.WriteString("\n"); err != nil {
+			return "", fmt.Errorf("error writing newline: %w", err)
+		}
+	}
+
+	if _, err := f.WriteString(code + "\n"); err != nil {
+		return "", fmt.Errorf("error writing code: %w", err)
+	}
+
+	return "Код успешно добавлен в файл", nil
+}

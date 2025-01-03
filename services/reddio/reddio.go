@@ -14,6 +14,14 @@ import (
 	"strings"
 )
 
+type UserInfoData struct {
+	CheckedIn    bool   `json:"checked_in"`
+	CheckinCount int    `json:"checkin_count"`
+	Points       int    `json:"points"`
+	TaskPoints   int    `json:"task_points"`
+	InviteCode   string `json:"invitation_code"`
+}
+
 func setCommonHeaders(req *http.Request) {
 	headers := map[string]string{
 		"accept":             "application/json, text/plain, */*",
@@ -35,42 +43,42 @@ func setCommonHeaders(req *http.Request) {
 	}
 }
 
-func UserInfo(client http.Client, address, code string) error {
+func UserInfo(client http.Client, address string) (*UserInfoData, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf("https://points-mainnet.reddio.com/v1/userinfo?wallet_address=%s", address), nil)
 	if err != nil {
-		return fmt.Errorf("failed to make get user info request %s", err)
+		return nil, fmt.Errorf("failed to make get user info request %s", err)
 	}
 	setCommonHeaders(req)
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to get user info %s", err)
+		return nil, fmt.Errorf("failed to get user info %s", err)
 	}
 	defer resp.Body.Close()
+
 	bodyText, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("failed to read body %s", err)
+		return nil, fmt.Errorf("failed to read body %s", err)
 	}
 
 	var response struct {
-		Status string `json:"status"`
-		Error  string `json:"error"`
-		Data   string `json:"data"`
+		Status string       `json:"status"`
+		Error  string       `json:"error"`
+		Data   UserInfoData `json:"data"`
 	}
 
 	if err := json.Unmarshal(bodyText, &response); err != nil {
-		return fmt.Errorf("failed to unmarshal %s", err)
+		return nil, fmt.Errorf("failed to unmarshal %s", err)
 	}
 
 	log.Println("Успешно получил статус пользователя")
 
 	if response.Error == "User not registered" {
-		return errors.New("user not registered")
+		return nil, errors.New("user not registered")
 	}
 
-	return nil
+	return &response.Data, nil
 }
-
 func PreRegister(client http.Client, address string) error {
 	data := strings.NewReader(fmt.Sprintf(`{"wallet_address":"%s"}`, address))
 	req, err := http.NewRequest("POST", "https://points-mainnet.reddio.com/v1/pre_register", data)

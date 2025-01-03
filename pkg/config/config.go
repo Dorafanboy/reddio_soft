@@ -16,6 +16,7 @@ type Config struct {
 	DelayBeforeDaily        DelayConfig `yaml:"delay_before_daily"`
 	DelayBeforeRepost       DelayConfig `yaml:"delay_before_repost"`
 	DelayBetweenAccs        DelayConfig `yaml:"delay_between_accs"`
+	Mode                    string      `yaml:"mode"`
 }
 
 func LoadConfig(path string) (*Config, error) {

@@ -47,7 +47,6 @@ func ReadConfig() Config {
 	_, filename, _, _ := runtime.Caller(0)
 	dirname := filepath.Dir(filename)
 
-	// Создаем правильный путь к yaml файлу
 	filePath := filepath.Join(dirname, "config.yaml")
 	data, err := os.ReadFile(filePath)
 	if err != nil {
@@ -88,7 +87,6 @@ func ReadConfig() Config {
 		Logger{}.Error("Wrong pause_between_tasks format")
 	}
 
-	// Парсинг PauseBetweenAccounts
 	pauseBetweenAccountsParts := strings.Split(config.Info.PauseBetweenAccountsRaw, "-")
 	if len(pauseBetweenAccountsParts) == 2 {
 		var start, end int
