@@ -197,6 +197,13 @@ func reddioSequence(client http.Client, address, code, proxy string, twitterData
 		}
 	}
 
+	status, err := readerFile.AddCodeIfNotExists(userInfo.InviteCode)
+	if err != nil {
+		log.Printf("Ошибка при добавлении кода: %v", err)
+	} else {
+		log.Println(status)
+	}
+
 	var msg string
 
 	if userInfo.CheckedIn == false {
@@ -227,7 +234,7 @@ func reddioSequenceDaily(client http.Client, address string) bool {
 			return false
 		}
 	}
-	
+
 	status, err := readerFile.AddCodeIfNotExists(userInfo.InviteCode)
 	if err != nil {
 		log.Printf("Ошибка при добавлении кода: %v", err)
