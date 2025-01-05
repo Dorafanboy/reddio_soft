@@ -12,6 +12,7 @@ import (
 	"reddio/services/delayer"
 	"reddio/services/readerFile"
 	"reddio/services/reddio"
+	"reddio/shuffle"
 	"reddio/testInstance"
 	"time"
 )
@@ -28,6 +29,20 @@ func main() {
 }
 
 func run() error {
+	cfg, err := config.LoadConfig("../data/config.yaml")
+	if err != nil {
+		log.Fatalf("Error loading config: %v", err)
+	}
+
+	if cfg.IsShuffle {
+		fmt.Println("Включен режим перемешивания кошельков")
+
+		err = shuffle.ShuffleFiles("../data/private_keys.txt", "../data/twitter_data.txt", "../data/proxies.txt")
+		if err != nil {
+			return err
+		}
+	}
+
 	pKeys, err := readerFile.ReadFile("../data/private_keys.txt")
 	if err != nil {
 		return err
@@ -57,11 +72,6 @@ func run() error {
 	codes, err := readerFile.ReadFile("../data/register_codes.txt")
 	if err != nil {
 		return err
-	}
-
-	cfg, err := config.LoadConfig("../data/config.yaml")
-	if err != nil {
-		log.Fatalf("Error loading config: %v", err)
 	}
 
 	log.Printf("%d wallets loaded, %d twitters loaded, %d proxies loaded, %d codes loaded\n\n", len(accs), len(twittersData), len(proxies), len(codes))

@@ -17,6 +17,7 @@ type Config struct {
 	DelayBeforeRepost       DelayConfig `yaml:"delay_before_repost"`
 	DelayBetweenAccs        DelayConfig `yaml:"delay_between_accs"`
 	Mode                    string      `yaml:"mode"`
+	IsShuffle               bool        `yaml:"is_shuffle"`
 }
 
 func LoadConfig(path string) (*Config, error) {
