@@ -154,7 +154,7 @@ func reddioSequence(client http.Client, address, code, proxy string, twitterData
 	}
 
 	log.Println("Буду ожидать, перед тем как авторизироваться через твитер")
-	delayer.RandomDelay(5, 15, false)
+	delayer.RandomDelay(cfg.DelayBeforeLoginTwitter.Min, cfg.DelayBeforeLoginTwitter.Max, false)
 
 	err = reddio.LoginTwitter(client, address, twitterData, cfg)
 	if err != nil {
