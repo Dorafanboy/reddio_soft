@@ -10,6 +10,7 @@ import (
 	"reddio/models"
 	"reddio/pkg/config"
 	"reddio/services/delayer"
+	"reddio/services/exporter"
 	"reddio/services/readerFile"
 	"reddio/services/reddio"
 	"reddio/shuffle"
@@ -123,14 +124,45 @@ func run() error {
 			if err != nil {
 				fmt.Println(err)
 			}
+		} else if cfg.Mode == "csv" {
+			log.Println("Включен режим CSV")
+
+			var allAddresses []string
+			for _, account := range accs {
+				allAddresses = append(allAddresses, account.Address.String())
+			}
+
+			log.Printf("Собрано %d адресов для обработки\n", len(allAddresses))
+
+			res = ProcessAndExportUserData(client, allAddresses, *cfg) == nil
+			if err != nil {
+				fmt.Println(err)
+			}
+
+			if res {
+				log.Printf("Успешно обработано и экспортировано %d адресов\n", len(allAddresses))
+			} else {
+				log.Printf("Произошла ошибка при обработке адресов\n")
+			}
+			return nil
 		}
 
 		if res {
 			log.Printf("Account successfully [%d/%d] %s ended\n\n", i+1, len(pKeys), acc.Address)
-			delayer.RandomDelay(cfg.DelayBetweenAccs.Min, cfg.DelayBetweenAccs.Max, true)
+			switch cfg.Mode {
+			case "csv":
+				delayer.RandomDelay(cfg.DelayBetweenAccsIfCsv.Min, cfg.DelayBetweenAccsIfCsv.Max, false)
+			case "default", "daily":
+				delayer.RandomDelay(cfg.DelayBetweenAccs.Min, cfg.DelayBetweenAccs.Max, true)
+			}
 		} else {
 			log.Printf("Account [%d/%d] %s ended with errors\n\n", i+1, len(pKeys), acc.Address)
-			delayer.RandomDelay(cfg.DelayBetweenAccs.Min, cfg.DelayBetweenAccs.Max, false)
+			switch cfg.Mode {
+			case "csv":
+				delayer.RandomDelay(cfg.DelayBetweenAccsIfCsv.Min, cfg.DelayBetweenAccsIfCsv.Max, false)
+			case "default", "daily":
+				delayer.RandomDelay(cfg.DelayBetweenAccs.Min, cfg.DelayBetweenAccs.Max, false)
+			}
 		}
 	}
 
@@ -263,6 +295,54 @@ func reddioSequenceDaily(client http.Client, address string) bool {
 	log.Printf("Выполнял ли сегодня дейлик: %s, кол-во daily check in %d, кол-во поинтов: %d\n", msg, userInfo.CheckinCount, userInfo.Points)
 
 	return true
+}
+
+func ProcessAndExportUserData(client http.Client, addresses []string, cfg config.Config) error {
+	var usersData []exporter.UserInfoData
+
+	for _, address := range addresses {
+		userInfo, err := getUserInfoWithRetry(client, address)
+		if err != nil {
+			log.Printf("Ошибка обработки адреса %s: %v", address, err)
+			continue
+		}
+
+		userData := exporter.UserInfoData{
+			Address:      address,
+			CheckedIn:    userInfo.CheckedIn,
+			CheckinCount: userInfo.CheckinCount,
+			Points:       userInfo.Points,
+		}
+		usersData = append(usersData, userData)
+
+		delayer.RandomDelay(cfg.DelayBetweenAccsIfCsv.Min, cfg.DelayBetweenAccsIfCsv.Max, false)
+	}
+
+	if err := exporter.ExportToCSV(usersData, "../data/users_export.csv"); err != nil {
+		return fmt.Errorf("ошибка при экспорте в CSV: %w", err)
+	}
+
+	return nil
+}
+
+func getUserInfoWithRetry(client http.Client, address string) (*reddio.UserInfoData, error) {
+	userInfo, err := reddio.UserInfo(client, address)
+	if err != nil {
+		if err.Error() == "user not registered" {
+			log.Printf("Пользователь %s не зарегистрирован, производим регистрацию", address)
+			err = reddio.PreRegister(client, address)
+			if err != nil {
+				return nil, fmt.Errorf("ошибка при регистрации пользователя: %w", err)
+			}
+			userInfo, err = reddio.UserInfo(client, address)
+			if err != nil {
+				return nil, fmt.Errorf("ошибка при повторном получении информации: %w", err)
+			}
+		} else {
+			return nil, fmt.Errorf("ошибка при получении информации пользователя: %w", err)
+		}
+	}
+	return userInfo, nil
 }
 
 func MakeRepost(authToken, proxy string) error {

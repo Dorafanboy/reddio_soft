@@ -16,6 +16,7 @@ type Config struct {
 	DelayBeforeDaily        DelayConfig `yaml:"delay_before_daily"`
 	DelayBeforeRepost       DelayConfig `yaml:"delay_before_repost"`
 	DelayBetweenAccs        DelayConfig `yaml:"delay_between_accs"`
+	DelayBetweenAccsIfCsv   DelayConfig `yaml:"delay_between_accs_if_csv"`
 	Mode                    string      `yaml:"mode"`
 	IsShuffle               bool        `yaml:"is_shuffle"`
 }
