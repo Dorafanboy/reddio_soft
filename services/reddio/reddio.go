@@ -15,11 +15,11 @@ import (
 )
 
 type UserInfoData struct {
-	CheckedIn    bool   `json:"checked_in"`
-	CheckinCount int    `json:"checkin_count"`
-	Points       int    `json:"points"`
-	TaskPoints   int    `json:"task_points"`
-	InviteCode   string `json:"invitation_code"`
+	CheckedIn    bool    `json:"checked_in"`
+	CheckinCount int     `json:"checkin_count"`
+	Points       float64 `json:"points"`
+	TaskPoints   float64 `json:"task_points"`
+	InviteCode   string  `json:"invitation_code"`
 }
 
 func setCommonHeaders(req *http.Request) {

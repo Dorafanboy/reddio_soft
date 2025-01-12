@@ -7,10 +7,10 @@ import (
 )
 
 type UserInfoData struct {
-	Address      string `json:"address"`
-	CheckedIn    bool   `json:"checked_in"`
-	CheckinCount int    `json:"checkin_count"`
-	Points       int    `json:"points"`
+	Address      string  `json:"address"`
+	CheckedIn    bool    `json:"checked_in"`
+	CheckinCount int     `json:"checkin_count"`
+	Points       float64 `json:"points"`
 }
 
 func ExportToCSV(users []UserInfoData, filename string) error {

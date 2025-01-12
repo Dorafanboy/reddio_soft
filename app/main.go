@@ -26,7 +26,6 @@ func main() {
 	if err := run(); err != nil {
 		fmt.Println(err)
 	}
-
 }
 
 func run() error {
@@ -108,7 +107,7 @@ func run() error {
 			code := codes[rand.Intn(len(codes))]
 			log.Printf("Use %s code if user not registered", code)
 
-			res = reddioSequence(client, acc.Address.String(), code, proxies[i], *twitterData, *cfg)
+			res, err = reddioSequence(client, acc.Address.String(), code, proxies[i], *twitterData, *cfg)
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -120,7 +119,7 @@ func run() error {
 		} else if cfg.Mode == "daily" {
 			log.Println("Включен режим сбора только дейликов")
 
-			res = reddioSequenceDaily(client, acc.Address.String())
+			res, err = reddioSequenceDaily(client, acc.Address.String())
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -169,15 +168,18 @@ func run() error {
 	return nil
 }
 
-func reddioSequence(client http.Client, address, code, proxy string, twitterData models.TwitterData, cfg config.Config) bool {
+func reddioSequence(client http.Client, address, code, proxy string, twitterData models.TwitterData, cfg config.Config) (bool, error) {
 	userInfo, err := reddio.UserInfo(client, address)
 	if err != nil {
 		if err.Error() == "user not registered" {
 			log.Println("Пользователь не зарегистрирован, буду прозводить регистрацию")
-			reddio.PreRegister(client, address)
+			err = reddio.PreRegister(client, address)
+			if err != nil {
+				return false, err
+			}
 		} else {
 			log.Println("Ошибка при получении информации пользователя:", err)
-			return false
+			return false, nil
 		}
 	}
 
@@ -191,7 +193,7 @@ func reddioSequence(client http.Client, address, code, proxy string, twitterData
 	err = reddio.LoginTwitter(client, address, twitterData, cfg)
 	if err != nil {
 		log.Println(err)
-		return false
+		return false, err
 	}
 
 	log.Println("Буду ожидать, перед тем как выполнять репост поста")
@@ -199,21 +201,21 @@ func reddioSequence(client http.Client, address, code, proxy string, twitterData
 	err = MakeRepost(twitterData.AuthToken, proxy)
 	if err != nil {
 		log.Println(err)
-		return false
+		return false, err
 	}
 
 	delayer.RandomDelay(cfg.DelayBeforeLogin.Min, cfg.DelayBeforeLogin.Max, false)
 	err = reddio.Register(client, address, code)
 	if err != nil {
 		log.Println(err)
-		return false
+		return false, err
 	}
 
 	delayer.RandomDelay(cfg.DelayBeforeDaily.Min, cfg.DelayBeforeDaily.Max, false)
 	err = reddio.DailyCheckIn(client, address)
 	if err != nil {
 		log.Println(err)
-		return false
+		return false, err
 	}
 
 	delayer.RandomDelay(cfg.DelayBeforeRepost.Min, cfg.DelayBeforeRepost.Max, false)
@@ -221,7 +223,7 @@ func reddioSequence(client http.Client, address, code, proxy string, twitterData
 	err = reddio.VerifyTask(client, address, taskId)
 	if err != nil {
 		log.Println(err)
-		return false
+		return false, err
 	}
 
 	time.Sleep(time.Second * 10)
@@ -232,10 +234,13 @@ func reddioSequence(client http.Client, address, code, proxy string, twitterData
 	if err != nil {
 		if err.Error() == "user not registered" {
 			log.Println("Пользователь не зарегистрирован, буду прозводить регистрацию")
-			reddio.PreRegister(client, address)
+			err = reddio.PreRegister(client, address)
+			if err != nil {
+				return false, err
+			}
 		} else {
 			log.Println("Ошибка при получении информации пользователя:", err)
-			return false
+			return false, err
 		}
 	}
 
@@ -254,26 +259,29 @@ func reddioSequence(client http.Client, address, code, proxy string, twitterData
 		msg = "Да"
 	}
 
-	log.Printf("Выполнял ли сегодня дейлик: %s, кол-во daily check in %d, кол-во поинтов: %d\n", msg, userInfo.CheckinCount, userInfo.Points)
+	log.Printf("Выполнял ли сегодня дейлик: %s, кол-во daily check in %d, кол-во поинтов: %0.2f\n", msg, userInfo.CheckinCount, userInfo.Points)
 
-	return true
+	return true, nil
 }
 
-func reddioSequenceDaily(client http.Client, address string) bool {
+func reddioSequenceDaily(client http.Client, address string) (bool, error) {
 	err := reddio.DailyCheckIn(client, address)
 	if err != nil {
 		log.Println(err)
-		return false
+		return false, err
 	}
 
 	userInfo, err := reddio.UserInfo(client, address)
 	if err != nil {
 		if err.Error() == "user not registered" {
 			log.Println("Пользователь не зарегистрирован, буду прозводить регистрацию")
-			reddio.PreRegister(client, address)
+			err = reddio.PreRegister(client, address)
+			if err != nil {
+				return false, err
+			}
 		} else {
 			log.Println("Ошибка при получении информации пользователя:", err)
-			return false
+			return false, nil
 		}
 	}
 
@@ -292,9 +300,9 @@ func reddioSequenceDaily(client http.Client, address string) bool {
 		msg = "Да"
 	}
 
-	log.Printf("Выполнял ли сегодня дейлик: %s, кол-во daily check in %d, кол-во поинтов: %d\n", msg, userInfo.CheckinCount, userInfo.Points)
+	log.Printf("Выполнял ли сегодня дейлик: %s, кол-во daily check in %d, кол-во поинтов: %0.2f\n", msg, userInfo.CheckinCount, userInfo.Points)
 
-	return true
+	return true, nil
 }
 
 func ProcessAndExportUserData(client http.Client, addresses []string, cfg config.Config) error {
