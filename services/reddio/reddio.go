@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	fhttp "github.com/bogdanfinn/fhttp"
+	tls_client "github.com/bogdanfinn/tls-client"
+	"github.com/bogdanfinn/tls-client/profiles"
 	"io"
 	"log"
 	"net/http"
@@ -177,6 +180,8 @@ func LoginTwitter(client http.Client, address string, twitterData models.Twitter
 }
 
 func MakeAuthorize(client http.Client, newURL string, twitterData models.TwitterData, cfg config.Config) error {
+	fmt.Println(newURL, twitterData)
+
 	req, err := http.NewRequest("GET", newURL, nil)
 	if err != nil {
 		return fmt.Errorf("failed to make get twitter make authorize request %s", err)
@@ -406,12 +411,119 @@ func VerifyTask(client http.Client, address, taskId string) error {
 		return fmt.Errorf("failed to get verify task %s", err)
 	}
 	defer resp.Body.Close()
-	_, err = io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("failed to read body %s", err)
 	}
 
 	log.Println("Успешно произвел подтверждения задания за репост")
 
+	fmt.Println(string(body))
+
 	return nil
+}
+
+type RequestConfig struct {
+	URL            string
+	AcceptHeader   string
+	AcceptLanguage string
+	CacheControl   string
+	Origin         string
+	Pragma         string
+	Priority       string
+	Referer        string
+	UserAgent      string
+	SecChUa        string
+	SecChUaMobile  string
+	SecChPlatform  string
+	SecFetchDest   string
+	SecFetchMode   string
+	SecFetchSite   string
+	Cookie         string
+}
+
+func (c RequestConfig) getHeaders() fhttp.Header {
+	headers := fhttp.Header{}
+	headers.Set("accept", c.AcceptHeader)
+	headers.Set("accept-language", c.AcceptLanguage)
+	headers.Set("cache-control", c.CacheControl)
+	headers.Set("origin", c.Origin)
+	headers.Set("pragma", c.Pragma)
+	headers.Set("priority", c.Priority)
+	headers.Set("referer", c.Referer)
+	headers.Set("sec-ch-ua", c.SecChUa)
+	headers.Set("sec-ch-ua-mobile", c.SecChUaMobile)
+	headers.Set("sec-ch-ua-platform", c.SecChPlatform)
+	headers.Set("sec-fetch-dest", c.SecFetchDest)
+	headers.Set("sec-fetch-mode", c.SecFetchMode)
+	headers.Set("sec-fetch-site", c.SecFetchSite)
+	headers.Set("user-agent", c.UserAgent)
+	return headers
+}
+
+func DefaultReddioConfig() RequestConfig {
+	return RequestConfig{
+		URL:            "https://testnet-faucet.reddio.com/api/claim/health",
+		AcceptHeader:   "application/json, text/plain, */*",
+		AcceptLanguage: "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
+		CacheControl:   "no-cache",
+		Origin:         "https://testnet-faucet.reddio.com",
+		Pragma:         "no-cache",
+		Priority:       "u=1, i",
+		Referer:        "https://testnet-faucet.reddio.com/",
+		UserAgent:      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+		SecChUa:        `"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"`,
+		SecChUaMobile:  "?0",
+		SecChPlatform:  `"Windows"`,
+		SecFetchDest:   "empty",
+		SecFetchMode:   "cors",
+		SecFetchSite:   "same-site",
+		Cookie:         "_ga=GA1.1.824215796.1734799701; _gcl_au=1.1.254054502.1734799702; _hjSessionUser_3457540=eyJpZCI6IjQzMTVjMzkyLWJiZWItNTk3Yi04N2NlLTU5NDkwNjA4OTYyYSIsImNyZWF0ZWQiOjE3MzQ3OTk3MDE3NTEsImV4aXN0aW5nIjp0cnVlfQ==; _hjSessionUser_3272944=eyJpZCI6IjE2ODZlZjc5LTIyODktNTFhMC05MjY3LWM1YjZjMjE1NzZkYyIsImNyZWF0ZWQiOjE3MzU0MTA0MjMxNzksImV4aXN0aW5nIjp0cnVlfQ==; _clck=gvjr4t%7C2%7Cfs3%7C0%7C1823; _hjSessionUser_3312016=eyJpZCI6IjYzZGY4NjFjLWY0NDctNWZhNS1hZGM4LWE4MDhhMTM0N2Y3ZiIsImNyZWF0ZWQiOjE3MzczOTUyMjU4NTIsImV4aXN0aW5nIjp0cnVlfQ==; _ga_15513WPM38=GS1.1.1737895888.40.1.1737895891.0.0.0; _ga_DZPN2FT3DF=GS1.1.1737895911.4.1.1737895937.0.0.0; _hjSession_3457540=eyJpZCI6IjE2OGU0NGFlLWVjMTEtNDc3Mi1iZmMwLTYxOGM1ZTlhZDhhNiIsImMiOjE3Mzc4OTgwODY1NjEsInMiOjAsInIiOjAsInNiIjowLCJzciI6MCwic2UiOjAsImZzIjowLCJzcCI6MX0=; _ga_2VLDCM8S5D=GS1.1.1737898085.21.1.1737898980.0.0.0; cf_clearance=YwOCTqiq2xGgUyBY_v2MKL5BYLqYAY5yph67nmUmhOs-1737898987-1.2.1.1-JH2Lx3iWh0ha5JOaDQkdrFWCbYL9lVBuH_Lo.fzaYQU3Om9p82txrGyDbih33UbkYmwI2Yq_.5liQWFkizHfmaisuxN4MXpYVnoP6Se.mMBJPUGqhMFc42M5oCNgHo_O5Jgx4jQo.LpcMkw07l4I2_JVUZcx5ngiEdV0zJSQJWHM1ZH4dwo6hCgx0fDNwpnHgwMqGCWBF05L5xSDguTLxfIrkpFkrFcBufOIsQ6QG9ZYxz3.sj3Dt3NenrxRiixLbXDWFyQa2A2i6gEIMrgDjE6rlPdi4QNmO6_itZHuQrDAaOGIu7kjlm0dMmpIkVusScduCRjYYyEosvOxWC1Dag",
+	}
+}
+
+func GetHealth(proxy string) (string, error) {
+	fmt.Println(proxy)
+	config := DefaultReddioConfig()
+
+	jar := tls_client.NewCookieJar()
+	options := []tls_client.HttpClientOption{
+		tls_client.WithTimeoutSeconds(30),
+		tls_client.WithClientProfile(profiles.Chrome_110),
+		tls_client.WithNotFollowRedirects(),
+		tls_client.WithCookieJar(jar),
+	}
+
+	if proxy != "" {
+		options = append(options, tls_client.WithProxyUrl(proxy))
+	}
+
+	client, err := tls_client.NewHttpClient(tls_client.NewNoopLogger(), options...)
+	if err != nil {
+		return "", fmt.Errorf("ошибка создания клиента: %v", err)
+	}
+
+	req, err := fhttp.NewRequest(http.MethodPost, config.URL, nil)
+	if err != nil {
+		return "", fmt.Errorf("ошибка создания запроса: %v", err)
+	}
+
+	req.Header = config.getHeaders()
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("ошибка выполнения запроса: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("ошибка чтения ответа: %v", err)
+	}
+
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("неуспешный статус ответа: %d, тело: %s", resp.StatusCode, string(body))
+	}
+
+	return string(body), nil
 }
