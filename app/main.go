@@ -19,7 +19,10 @@ import (
 )
 
 var (
-	taskId = "c2cf2c1d-cb46-406d-b025-dd6a0036923c"
+	taskId         = "c2cf2c1d-cb46-406d-b025-dd6a0036923c"
+	bridgeTaskId   = "c2cf2c1d-cb46-406d-b025-dd6a00369216"
+	transferTaskId = "c2cf2c1d-cb46-406d-b025-dd6a00369215"
+	faucetTaskId   = "c2cf2c1d-cb46-406d-b025-dd6a00369214"
 )
 
 func main() {
@@ -119,7 +122,25 @@ func run() error {
 		} else if cfg.Mode == "daily" {
 			log.Println("Включен режим сбора только дейликов")
 
-			res, err = reddioSequenceDaily(client, acc.Address.String())
+			//healthCheckProxy := fmt.Sprintf("http://%s", proxies[i])
+			//result, err := reddio.GetHealth(healthCheckProxy)
+			//if err != nil {
+			//	fmt.Println(err)
+			//} else {
+			//	fmt.Println(result)
+			//}
+			//
+			//ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			//defer cancel()
+			//
+			//turnstileData, err := captcha.GetTurnstileData(ctx)
+			//if err != nil {
+			//	fmt.Printf("Error getting Turnstile data: %v\n", err)
+			//} else {
+			//	fmt.Printf("Turnstile data: %+v\n", turnstileData)
+			//}
+
+			res, err = reddioSequenceDaily(client, acc.Address.String(), *cfg)
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -264,11 +285,41 @@ func reddioSequence(client http.Client, address, code, proxy string, twitterData
 	return true, nil
 }
 
-func reddioSequenceDaily(client http.Client, address string) (bool, error) {
+func reddioSequenceDaily(client http.Client, address string, cfg config.Config) (bool, error) {
 	err := reddio.DailyCheckIn(client, address)
 	if err != nil {
 		log.Println(err)
 		return false, err
+	}
+
+	delayer.RandomDelay(cfg.DelayBetweenDailyModules.Min, cfg.DelayBetweenDailyModules.Max, false)
+
+	err = reddio.VerifyTask(client, address, faucetTaskId)
+	if err != nil {
+		log.Println(err)
+		return false, err
+	} else {
+		log.Println("Успешно получил поинты за карн")
+	}
+
+	delayer.RandomDelay(cfg.DelayBetweenDailyModules.Min, cfg.DelayBetweenDailyModules.Max, false)
+
+	err = reddio.VerifyTask(client, address, bridgeTaskId)
+	if err != nil {
+		log.Println(err)
+		return false, err
+	} else {
+		log.Println("Успешно получил поинты за дейли бридж")
+	}
+
+	delayer.RandomDelay(cfg.DelayBetweenDailyModules.Min, cfg.DelayBetweenDailyModules.Max, false)
+
+	err = reddio.VerifyTask(client, address, transferTaskId)
+	if err != nil {
+		log.Println(err)
+		return false, err
+	} else {
+		log.Println("Успешно получил поинты за дейли трансфер")
 	}
 
 	userInfo, err := reddio.UserInfo(client, address)
